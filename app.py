@@ -7,12 +7,69 @@ import io
 import textwrap
 
 # --- BRÄNDI VÄRVID ---
-COLOR_TEAL = HexColor("#1A776F")
-COLOR_DARK = HexColor("#052623")
-COLOR_ORANGE = HexColor("#FF7F40")
+COLOR_TEAL = HexColor("#1A776F")   # 1, 4
+COLOR_DARK = HexColor("#052623")   # 2, 5
+COLOR_ORANGE = HexColor("#FF7F40") # 3
 COLOR_BG = HexColor("#FAFAFA")
 COLOR_WHITE = HexColor("#FFFFFF")
 COLOR_TEXT = HexColor("#2E3A39")
+
+# --- JOONISTAMISE ABIFUNKTSIOONID ---
+
+def draw_rounded_header_rect(c, x, y, w, h, radius, color):
+    """Joonistab kasti, millel on ainult ülemised nurgad ümarad (sammaste päis)"""
+    c.setFillColor(color)
+    p = c.beginPath()
+    p.moveTo(x, y) # Alumine vasak
+    p.lineTo(x, y + h - radius) # Vasak serv üles
+    # Ülemine vasak kurv
+    p.arc(x, y + h - radius*2, x + radius*2, y + h, 180, 90)
+    p.lineTo(x + w - radius, y + h) # Ülemine serv
+    # Ülemine parem kurv
+    p.arc(x + w - radius*2, y + h - radius*2, x + w, y + h, 90, 0)
+    p.lineTo(x + w, y) # Parem serv alla
+    p.lineTo(x, y) # Alumine serv
+    p.close()
+    c.drawPath(p, fill=1, stroke=0)
+
+def draw_vector_icon(c, x, y, type, color):
+    """Joonistab lihtsa vektorsümboli (et vältida emoji probleeme)"""
+    c.setStrokeColor(color)
+    c.setLineWidth(1.5)
+    c.setFillColor(color)
+    
+    cx, cy = x, y + 5 # Tsentreerimise nihe
+    
+    if type == "chart": # Tracking
+        c.rect(cx - 6, cy - 4, 3, 6, fill=1, stroke=0)
+        c.rect(cx - 1, cy - 4, 3, 10, fill=1, stroke=0)
+        c.rect(cx + 4, cy - 4, 3, 8, fill=1, stroke=0)
+        
+    elif type == "pie": # Eesmärgid (Münt/Sektor)
+        c.circle(cx, cy, 6, fill=0, stroke=1)
+        c.line(cx, cy, cx, cy + 6) # Joon üles
+        c.line(cx, cy, cx + 4, cy - 4) # Joon diagonaali
+        
+    elif type == "target": # Sihtimine
+        c.circle(cx, cy, 7, fill=0, stroke=1)
+        c.circle(cx, cy, 4, fill=0, stroke=1)
+        c.circle(cx, cy, 1, fill=1, stroke=1)
+        
+    elif type == "bulb": # Loovus (Lambipirn/Romb)
+        p = c.beginPath()
+        p.moveTo(cx, cy + 7)
+        p.lineTo(cx + 6, cy)
+        p.lineTo(cx, cy - 7)
+        p.lineTo(cx - 6, cy)
+        p.close()
+        c.drawPath(p, fill=0, stroke=1)
+        
+    elif type == "arrow": # Teekond (Nool ringis)
+        c.circle(cx, cy, 7, fill=0, stroke=1)
+        # Lihtne nool paremale
+        c.line(cx - 3, cy, cx + 3, cy)
+        c.line(cx + 3, cy, cx + 1, cy + 2)
+        c.line(cx + 3, cy, cx + 1, cy - 2)
 
 def create_onboarding_pdf(logo_file):
     buffer = io.BytesIO()
@@ -52,13 +109,13 @@ def create_onboarding_pdf(logo_file):
 
     # --- 3. PROTSESSI SAMMUD ---
 
-    # Edu mudeli andmed (Visuaalsete kaartide jaoks) - Uuendatud sümbolitega
+    # Edu mudeli andmed (Värvid ja ikoonitüübid vastavalt pildile)
     pillars_data = [
-        {"title": "TRACKING", "sub": "Analüütika", "symbol": "📊"}, # Tulpdiagramm
-        {"title": "EESMÄRGID", "sub": "Unit Economics", "symbol": "💼"}, # Portfell
-        {"title": "SIHTIMINE", "sub": "Audience Mix", "symbol": "🎯"}, # Märklaud
-        {"title": "LOOVUS", "sub": "Creative Assets", "symbol": "💡"}, # Lambipirn
-        {"title": "TEEKOND", "sub": "CRO / UX", "symbol": "🔄"}, # Nooled ringis (optimeerimine)
+        {"title": "TRACKING", "sub": "Analüütika", "icon": "chart", "color": COLOR_TEAL},
+        {"title": "EESMÄRGID", "sub": "Unit Economics", "icon": "pie", "color": COLOR_DARK},
+        {"title": "SIHTIMINE", "sub": "Audience Mix", "icon": "target", "color": COLOR_ORANGE},
+        {"title": "LOOVUS", "sub": "Creative Assets", "icon": "bulb", "color": COLOR_TEAL},
+        {"title": "TEEKOND", "sub": "CRO / UX", "icon": "arrow", "color": COLOR_DARK},
     ]
 
     steps = [
@@ -78,7 +135,7 @@ def create_onboarding_pdf(logo_file):
             "num": "3", "title": "STRATEEGILINE PLAAN",
             "subtitle": "Tegevuskava kinnitamine",
             "text": "Loome tegevuskava koos selgete eesmärkide ja lahendustega. Lähtume plaanis järgmisest 5-osalisest edu mudelist:",
-            "has_visual_pillars": True, # Märge, et siia tuleb joonistada sambad
+            "has_visual_pillars": True,
             "is_last": False
         },
         {
@@ -102,10 +159,9 @@ def create_onboarding_pdf(logo_file):
         
         pillars_section_height = 0
         if step.get('has_visual_pillars'):
-            pillars_section_height = 100 # Ruumi sammaste jaoks
+            pillars_section_height = 100 
             
         box_height = 60 + text_height + pillars_section_height
-        
         box_top = current_y_cursor
         
         # Numbrite asukoht: Joondatud kasti ülemise äärega (offset 20px)
@@ -119,7 +175,6 @@ def create_onboarding_pdf(logo_file):
             "circle_y": circle_y,
             "text_lines": wrapped_text
         })
-        
         current_y_cursor -= (box_height + 30)
 
     # --- JOONISTAMINE ---
@@ -128,17 +183,21 @@ def create_onboarding_pdf(logo_file):
     start_line_y = layout_data[0]['circle_y']
     last_box_bottom = layout_data[-1]['box_top'] - layout_data[-1]['box_height']
     
-    infinity_y = last_box_bottom - 15
-    end_line_y = infinity_y + 12 
+    # Lõpmatuse sümbol (käsitsi joonistatud kahe ringiga, et oleks kindel)
+    infinity_center_y = last_box_bottom - 20
+    infinity_radius = 5
+    
+    # Joon lõpeb enne sümbolit
+    end_line_y = infinity_center_y + infinity_radius + 5
     
     c.setStrokeColor(COLOR_TEAL)
     c.setLineWidth(2)
     c.line(line_x, start_line_y, line_x, end_line_y)
     
-    # Lõpmatuse sümbol
-    c.setFont("Helvetica", 24)
-    c.setFillColor(COLOR_TEAL)
-    c.drawCentredString(line_x, infinity_y - 8, "∞")
+    # Lõpmatuse sümbol (kaks ringi kõrvuti)
+    c.setLineWidth(1.5)
+    c.circle(line_x - 5, infinity_center_y, 5, stroke=1, fill=0)
+    c.circle(line_x + 5, infinity_center_y, 5, stroke=1, fill=0)
 
 
     # 2. Joonista kastid ja sisu
@@ -161,6 +220,7 @@ def create_onboarding_pdf(logo_file):
         # Kasti joonistamine
         c.setFillColor(bg_color)
         c.setStrokeColor(stroke_color)
+        c.setLineWidth(1)
         c.roundRect(line_x + 25, box_top - box_height, box_width, box_height, 10, fill=1, stroke=1)
 
         # Ring ja Number (Vasakul joonel)
@@ -198,7 +258,7 @@ def create_onboarding_pdf(logo_file):
             available_width = box_width - 60 
             p_gap = 8
             p_width = (available_width - (4 * p_gap)) / 5
-            p_height = 75 # Optimeeritud kõrgus
+            p_height = 80
             
             p_start_x = line_x + 55 
             
@@ -206,61 +266,42 @@ def create_onboarding_pdf(logo_file):
                 px = p_start_x + (i * (p_width + p_gap))
                 py = pillars_y - p_height
                 
-                pillar_color = COLOR_TEAL # Kõik ühte värvi
+                # Võta värv vastavalt andmetele
+                pillar_color = p['color']
                 pillar_radius = 8
                 
-                # --- 1. Joonista kasti taust ja piirjoon ---
+                # 1. Kasti taust (Valge, värvilise äärega)
                 c.setFillColor(COLOR_WHITE)
                 c.setStrokeColor(pillar_color)
                 c.setLineWidth(1)
                 c.roundRect(px, py, p_width, p_height, pillar_radius, fill=1, stroke=1)
                 
-                # --- 2. Joonista värviline päis (Clippinguga) ---
-                c.saveState()
+                # 2. Värviline päis (Ümarad ülanurgad)
+                header_height = 25
+                draw_rounded_header_rect(c, px, py + p_height - header_height, p_width, header_height, pillar_radius, pillar_color)
                 
-                # Loome maski, mis on sama kujuga nagu sammas
-                path = c.beginPath()
-                path.roundRect(px, py, p_width, p_height, pillar_radius)
-                c.clipPath(path, stroke=0, fill=0)
-                
-                # Joonistame päise kasti
-                c.setFillColor(pillar_color)
-                c.rect(px, py + p_height - 22, p_width, 22, fill=1, stroke=0)
-                
-                c.restoreState()
-                
-                # --- 3. Taasta piirjoon päise ümber (puhtuse mõttes) ---
-                c.setStrokeColor(pillar_color)
-                c.setLineWidth(1)
-                c.roundRect(px, py, p_width, p_height, pillar_radius, fill=0, stroke=1)
-
-                # --- 4. Sisu ---
-                
-                # Number päises
+                # 3. Number päises
                 c.setFillColor(COLOR_WHITE)
                 c.setFont("Helvetica-Bold", 11)
-                c.drawCentredString(px + p_width/2, py + p_height - 16, str(i + 1))
+                c.drawCentredString(px + p_width/2, py + p_height - 18, str(i + 1))
                 
-                # Pealkiri
+                # 4. Pealkiri
                 c.setFillColor(pillar_color)
                 c.setFont("Helvetica-Bold", 7)
                 if len(p['title']) > 8:
                      c.setFont("Helvetica-Bold", 6)
-                c.drawCentredString(px + p_width/2, py + p_height - 35, p['title'])
+                c.drawCentredString(px + p_width/2, py + p_height - 38, p['title'])
                 
-                # Alampealkiri
+                # 5. Alampealkiri
                 c.setFillColor(HexColor("#555555"))
                 c.setFont("Helvetica", 6)
-                c.drawCentredString(px + p_width/2, py + p_height - 45, p['sub'])
+                c.drawCentredString(px + p_width/2, py + p_height - 48, p['sub'])
                 
-                # --- SÜMBOL/EMOJI ---
-                # Asendame kirjelduse ja ringi sümboliga
-                c.setFillColor(pillar_color)
-                symbol = p.get('symbol', '')
-                # Kasutame suuremat fonti sümboli jaoks
-                c.setFont("Helvetica", 16) 
-                # Paigutame sümboli kasti alumisse ossa
-                c.drawCentredString(px + p_width/2, py + 12, symbol)
+                # 6. Sümbol (Vektorikoon)
+                icon_center_x = px + p_width/2
+                icon_center_y = py + 12
+                draw_vector_icon(c, icon_center_x, icon_center_y, p['icon'], pillar_color)
+
 
     # --- 4. JALUS JA NUPP ---
     footer_height = 100
@@ -295,7 +336,7 @@ def create_onboarding_pdf(logo_file):
 
 # --- STREAMLIT UI ---
 st.title("📄 Turundusjutud Onboarding PDF")
-st.write("Genereeri ametlik protsessijoonis (Viimistletud Edu mudeliga).")
+st.write("Genereeri ametlik protsessijoonis (Sümbolitega, ilma emojideta).")
 
 logo = st.file_uploader("Vali logo (PNG)", type=['png'])
 
