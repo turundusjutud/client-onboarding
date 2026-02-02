@@ -52,14 +52,33 @@ def create_onboarding_pdf(logo_file):
 
     # --- 3. PROTSESSI SAMMUD ---
 
-    # Edu mudeli andmed (Nüüd kõik ühte värvi - TEAL - vähem müra)
-    # Kasutame ikoone/tähti ringide sees
+    # Edu mudeli andmed (Põhjalikumad kirjeldused)
     pillars_data = [
-        {"title": "TRACKING", "sub": "Analüütika", "symbol": "T"},
-        {"title": "EESMÄRGID", "sub": "Unit Economics", "symbol": "€"},
-        {"title": "SIHTIMINE", "sub": "Audience Mix", "symbol": "🎯"},
-        {"title": "LOOVUS", "sub": "Creative Assets", "symbol": "🎨"},
-        {"title": "TEEKOND", "sub": "CRO / UX", "symbol": "🚀"},
+        {
+            "title": "TRACKING", 
+            "sub": "Analüütika", 
+            "desc": "Seadistame GA4 ja konversioonid, et mõõta reaalset äritulemust, mitte edevusnumbreid."
+        },
+        {
+            "title": "EESMÄRGID", 
+            "sub": "Unit Economics", 
+            "desc": "Paneme paika kasumlikkuse mudeli, et iga reklaami investeeritud euro tooks tagasi rohkem."
+        },
+        {
+            "title": "SIHTIMINE", 
+            "sub": "Audience Mix", 
+            "desc": "Leiame sinu ideaalse kliendi läbi täpse audientsiloome ja remarketingi strateegiate."
+        },
+        {
+            "title": "LOOVUS", 
+            "sub": "Creative Assets", 
+            "desc": "Eristuvad visuaalid ja sõnumid, mis kõnetavad sihtrühma ja tõstavad klikkimise määra."
+        },
+        {
+            "title": "TEEKOND", 
+            "sub": "CRO / UX", 
+            "desc": "Optimeerime maandumislehe ja ostuteekonna, et külastajast saaks maksev klient."
+        },
     ]
 
     steps = [
@@ -90,10 +109,7 @@ def create_onboarding_pdf(logo_file):
         }
     ]
 
-    # --- EELARVUTUS (Pre-calculation) ---
-    # Me peame teadma täpselt, kus asuvad kastide keskpunktid, et joonistada joon
-    # punktist 1 kuni punktini 4, mitte lõpmatusse.
-    
+    # --- EELARVUTUS ---
     layout_data = []
     current_y_cursor = height - 140
     line_x = 55
@@ -106,43 +122,44 @@ def create_onboarding_pdf(logo_file):
         
         pillars_section_height = 0
         if step.get('has_visual_pillars'):
-            pillars_section_height = 90 
+            pillars_section_height = 110 # Rohkem ruumi pikema teksti jaoks
             
         box_height = 60 + text_height + pillars_section_height
         
-        # Arvutame kasti Y koordinaadid
         box_top = current_y_cursor
-        box_bottom = current_y_cursor - box_height
         
-        # Arvutame keskpunkti numbri ja joone jaoks
-        center_y = box_top - (box_height / 2)
+        # Numbrite asukoht: fikseeritud kaugus kasti ülemisest äärest
+        circle_offset = 35 
+        circle_y = box_top - circle_offset
         
         layout_data.append({
             "step": step,
             "box_top": box_top,
             "box_height": box_height,
-            "center_y": center_y,
+            "circle_y": circle_y, # Salvestame ringi asukoha
             "text_lines": wrapped_text
         })
         
-        # Uus Y järgmise kasti jaoks (lisame vahe 30px)
         current_y_cursor -= (box_height + 30)
 
     # --- JOONISTAMINE ---
 
-    # 1. Joonista ühendav joon (Ainult esimesest keskkohast viimase keskkohani)
-    start_line_y = layout_data[0]['center_y']
-    end_line_y = layout_data[-1]['center_y']
+    # 1. Joonista ühendav joon (Esimesest ringist kuni viimase kasti alla)
+    start_line_y = layout_data[0]['circle_y']
+    
+    # Arvutame joone lõpu: viimase kasti põhi - 20px
+    last_box_bottom = layout_data[-1]['box_top'] - layout_data[-1]['box_height']
+    end_line_y = last_box_bottom - 25 
     
     c.setStrokeColor(COLOR_TEAL)
-    c.setLineWidth(2) # Veidi paksem joon
+    c.setLineWidth(2)
     c.line(line_x, start_line_y, line_x, end_line_y)
     
-    # Lisa väike lõpmatuse sümbol joone lõppu (viimase palli alla)
-    c.setFont("Helvetica", 18)
+    # Lõpmatuse sümbol joone lõppu
+    c.setFont("Helvetica", 24)
     c.setFillColor(COLOR_TEAL)
-    # Tsentreerime sümboli joone alla
-    c.drawCentredString(line_x, end_line_y - 35, "∞")
+    # Tsentreerime sümboli joone otsa (Y koordinaati veidi nihutades)
+    c.drawCentredString(line_x, end_line_y - 8, "∞")
 
 
     # 2. Joonista kastid ja sisu
@@ -150,7 +167,7 @@ def create_onboarding_pdf(logo_file):
         step = item['step']
         box_top = item['box_top']
         box_height = item['box_height']
-        center_y = item['center_y']
+        circle_y = item['circle_y']
         
         # Kasti joonistamine
         if step['is_last']:
@@ -160,24 +177,21 @@ def create_onboarding_pdf(logo_file):
             c.setFillColor(HexColor("#F7F9F9"))
             c.setStrokeColor(COLOR_TEAL)
         
-        # Ümaramad nurgad (radius=10)
         c.roundRect(line_x + 25, box_top - box_height, box_width, box_height, 10, fill=1, stroke=1)
 
-        # Ring ja Number (Tsentreeritud kasti kõrguse suhtes)
+        # Ring ja Number (Üleval ääres)
         c.setFillColor(COLOR_ORANGE if step['is_last'] else COLOR_TEAL)
-        # Ringi taust, et joon ei paistaks läbi
         c.setStrokeColor(COLOR_BG) 
-        c.circle(line_x, center_y, 14, fill=1, stroke=1) # Veidi suurem ring
+        c.circle(line_x, circle_y, 14, fill=1, stroke=1)
         
         c.setFillColor(COLOR_WHITE)
         c.setFont("Helvetica-Bold", 12)
-        # Tsentreerime numbri täpselt ringi keskele (Y-offset -4 on visuaalne parandus)
-        c.drawCentredString(line_x, center_y - 4, step['num'])
+        c.drawCentredString(line_x, circle_y - 4, step['num'])
 
-        # Teksti alguspunkt (arvestame kasti ülemist äärt)
+        # Sisu alguspunkt
         content_start_y = box_top - 25
 
-        # Pealkirjad kasti sees
+        # Pealkirjad
         c.setFillColor(COLOR_ORANGE if step['is_last'] else COLOR_TEAL)
         c.setFont("Helvetica-Bold", 12)
         c.drawString(line_x + 45, content_start_y, step['title'])
@@ -195,13 +209,12 @@ def create_onboarding_pdf(logo_file):
             
         # --- SAMMASTE JOONISTAMINE (Step 3) ---
         if step.get('has_visual_pillars'):
-            # Paigutame sambad teksti alla
             pillars_y = text_y - 10 
             
             available_width = box_width - 60 
-            p_gap = 10
+            p_gap = 8
             p_width = (available_width - (4 * p_gap)) / 5
-            p_height = 70
+            p_height = 95 # Suurendatud kõrgus teksti mahutamiseks
             
             p_start_x = line_x + 55 
             
@@ -209,41 +222,41 @@ def create_onboarding_pdf(logo_file):
                 px = p_start_x + (i * (p_width + p_gap))
                 py = pillars_y - p_height
                 
-                # Kõik sambad on nüüd TEAL (vähem müra)
-                pillar_color = COLOR_TEAL
-                
                 # Samba taust
                 c.setFillColor(COLOR_WHITE)
-                c.setStrokeColor(pillar_color)
+                c.setStrokeColor(COLOR_TEAL)
                 c.setLineWidth(1)
-                # Ümaramad nurgad sammastel (radius=8)
                 c.roundRect(px, py, p_width, p_height, 8, fill=1, stroke=1)
                 
-                # Ülemine osa (Header) - Ümarate nurkadega
-                # Lihtsuse mõttes joonistame ümara kasti ja katame alumise poole kinni
-                c.setFillColor(pillar_color)
-                # Ülemine riba
+                # Päis (Header)
+                c.setFillColor(COLOR_TEAL)
                 c.roundRect(px, py + p_height - 20, p_width, 20, 4, fill=1, stroke=0) 
-                # Katame alumised nurgad kandiliseks, et üleminek oleks sujuv (kui vaja), 
-                # aga siin laseme olla ümar.
                 
-                # Sümbol/Täht päises
+                # Number päises (tagasi toodud)
                 c.setFillColor(COLOR_WHITE)
                 c.setFont("Helvetica-Bold", 10)
-                c.drawCentredString(px + p_width/2, py + p_height - 14, p['symbol'])
+                c.drawCentredString(px + p_width/2, py + p_height - 14, str(i + 1))
                 
                 # Pealkiri
-                c.setFillColor(pillar_color)
+                c.setFillColor(COLOR_TEAL)
                 c.setFont("Helvetica-Bold", 7)
                 if len(p['title']) > 8:
                      c.setFont("Helvetica-Bold", 6)
-                c.drawCentredString(px + p_width/2, py + 35, p['title'])
+                c.drawCentredString(px + p_width/2, py + p_height - 32, p['title'])
                 
-                # Alampealkiri
-                c.setFillColor(HexColor("#555555"))
+                # Kirjeldus (3 rida)
+                c.setFillColor(COLOR_TEXT)
                 c.setFont("Helvetica", 6)
-                c.drawCentredString(px + p_width/2, py + 20, p['sub'])
-
+                
+                # Teksti murdmine väga kitsaks
+                p_wrapper = textwrap.TextWrapper(width=16) 
+                desc_lines = p_wrapper.wrap(p['desc'])
+                
+                # Piirame 4 reaga, et kasti ära mahuks
+                desc_y = py + p_height - 44
+                for d_line in desc_lines[:4]: 
+                    c.drawCentredString(px + p_width/2, desc_y, d_line)
+                    desc_y -= 8
 
     # --- 4. JALUS JA NUPP ---
     footer_height = 100
@@ -254,13 +267,13 @@ def create_onboarding_pdf(logo_file):
     c.setFont("Helvetica-Bold", 10)
     c.drawCentredString(width/2, 75, "Alustame koostööd tutvumiskõnega")
     
-    # "BRONEERI KÕNE" NUPP
+    # Nupp
     btn_w, btn_h = 160, 30
     btn_x = (width - btn_w) / 2
     btn_y = 35
     
     c.setFillColor(COLOR_ORANGE)
-    c.roundRect(btn_x, btn_y, btn_w, btn_h, 15, fill=1, stroke=0) # Ümaram nupp
+    c.roundRect(btn_x, btn_y, btn_w, btn_h, 15, fill=1, stroke=0)
     
     c.setFillColor(COLOR_WHITE)
     c.setFont("Helvetica-Bold", 11)
@@ -278,7 +291,7 @@ def create_onboarding_pdf(logo_file):
 
 # --- STREAMLIT UI ---
 st.title("📄 Turundusjutud Onboarding PDF")
-st.write("Genereeri puhas, sümmeetriline ja visuaalselt rahulik protsessijoonis.")
+st.write("Genereeri ametlik protsessijoonis (Sammud + Edu mudel).")
 
 logo = st.file_uploader("Vali logo (PNG)", type=['png'])
 
