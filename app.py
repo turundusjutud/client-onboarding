@@ -17,20 +17,20 @@ COLOR_TEXT = HexColor("#2E3A39")
 # --- JOONISTAMISE ABIFUNKTSIOONID ---
 
 def draw_rounded_header_rect(c, x, y, w, h, radius, color):
-    """Joonistab kasti, millel on ainult ülemised nurgad ümarad (sammaste päis)"""
+    """
+    Joonistab kasti, millel on ainult ülemised nurgad ümarad.
+    Parandatud versioon: kasutab 'kattuvuse' tehnikat, et vältida ZeroDivisionErrorit.
+    """
     c.setFillColor(color)
-    p = c.beginPath()
-    p.moveTo(x, y) # Alumine vasak
-    p.lineTo(x, y + h - radius) # Vasak serv üles
-    # Ülemine vasak kurv
-    p.arc(x, y + h - radius*2, x + radius*2, y + h, 180, 90)
-    p.lineTo(x + w - radius, y + h) # Ülemine serv
-    # Ülemine parem kurv
-    p.arc(x + w - radius*2, y + h - radius*2, x + w, y + h, 90, 0)
-    p.lineTo(x + w, y) # Parem serv alla
-    p.lineTo(x, y) # Alumine serv
-    p.close()
-    c.drawPath(p, fill=1, stroke=0)
+    c.setStrokeColor(color) # Ääris sama värvi, et vältida triipe
+    
+    # 1. Joonista täielikult ümarate nurkadega kast
+    c.roundRect(x, y, w, h, radius, fill=1, stroke=0)
+    
+    # 2. Joonista alumisse poolde kandiline kast, et "sirgendada" alumised nurgad
+    # See kast katab ümara kasti alumise osa kinni
+    rect_height = radius  # Piisab, kui katame nurgaraadiuse jagu
+    c.rect(x, y, w, rect_height, fill=1, stroke=0)
 
 def draw_vector_icon(c, x, y, type, color):
     """Joonistab lihtsa vektorsümboli (et vältida emoji probleeme)"""
@@ -45,7 +45,7 @@ def draw_vector_icon(c, x, y, type, color):
         c.rect(cx - 1, cy - 4, 3, 10, fill=1, stroke=0)
         c.rect(cx + 4, cy - 4, 3, 8, fill=1, stroke=0)
         
-    elif type == "pie": # Eesmärgid (Münt/Sektor)
+    elif type == "pie": # Eesmärgid
         c.circle(cx, cy, 6, fill=0, stroke=1)
         c.line(cx, cy, cx, cy + 6) # Joon üles
         c.line(cx, cy, cx + 4, cy - 4) # Joon diagonaali
@@ -55,7 +55,7 @@ def draw_vector_icon(c, x, y, type, color):
         c.circle(cx, cy, 4, fill=0, stroke=1)
         c.circle(cx, cy, 1, fill=1, stroke=1)
         
-    elif type == "bulb": # Loovus (Lambipirn/Romb)
+    elif type == "bulb": # Loovus
         p = c.beginPath()
         p.moveTo(cx, cy + 7)
         p.lineTo(cx + 6, cy)
@@ -64,7 +64,7 @@ def draw_vector_icon(c, x, y, type, color):
         p.close()
         c.drawPath(p, fill=0, stroke=1)
         
-    elif type == "arrow": # Teekond (Nool ringis)
+    elif type == "arrow": # Teekond
         c.circle(cx, cy, 7, fill=0, stroke=1)
         # Lihtne nool paremale
         c.line(cx - 3, cy, cx + 3, cy)
@@ -109,7 +109,7 @@ def create_onboarding_pdf(logo_file):
 
     # --- 3. PROTSESSI SAMMUD ---
 
-    # Edu mudeli andmed (Värvid ja ikoonitüübid vastavalt pildile)
+    # Edu mudeli andmed
     pillars_data = [
         {"title": "TRACKING", "sub": "Analüütika", "icon": "chart", "color": COLOR_TEAL},
         {"title": "EESMÄRGID", "sub": "Unit Economics", "icon": "pie", "color": COLOR_DARK},
@@ -183,18 +183,16 @@ def create_onboarding_pdf(logo_file):
     start_line_y = layout_data[0]['circle_y']
     last_box_bottom = layout_data[-1]['box_top'] - layout_data[-1]['box_height']
     
-    # Lõpmatuse sümbol (käsitsi joonistatud kahe ringiga, et oleks kindel)
     infinity_center_y = last_box_bottom - 20
     infinity_radius = 5
     
-    # Joon lõpeb enne sümbolit
     end_line_y = infinity_center_y + infinity_radius + 5
     
     c.setStrokeColor(COLOR_TEAL)
     c.setLineWidth(2)
     c.line(line_x, start_line_y, line_x, end_line_y)
     
-    # Lõpmatuse sümbol (kaks ringi kõrvuti)
+    # Lõpmatuse sümbol
     c.setLineWidth(1.5)
     c.circle(line_x - 5, infinity_center_y, 5, stroke=1, fill=0)
     c.circle(line_x + 5, infinity_center_y, 5, stroke=1, fill=0)
@@ -276,7 +274,7 @@ def create_onboarding_pdf(logo_file):
                 c.setLineWidth(1)
                 c.roundRect(px, py, p_width, p_height, pillar_radius, fill=1, stroke=1)
                 
-                # 2. Värviline päis (Ümarad ülanurgad)
+                # 2. Värviline päis (KASUTAME UUT FUNKTSIOONI)
                 header_height = 25
                 draw_rounded_header_rect(c, px, py + p_height - header_height, p_width, header_height, pillar_radius, pillar_color)
                 
