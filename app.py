@@ -10,7 +10,6 @@ import textwrap
 COLOR_TEAL = HexColor("#1A776F")
 COLOR_DARK = HexColor("#052623")
 COLOR_ORANGE = HexColor("#FF7F40")
-# COLOR_YELLOW on eemaldatud tekstist parema kontrasti huvides
 COLOR_BG = HexColor("#FAFAFA")
 COLOR_WHITE = HexColor("#FFFFFF")
 COLOR_TEXT = HexColor("#2E3A39")
@@ -24,12 +23,11 @@ def create_onboarding_pdf(logo_file):
     c.setFillColor(COLOR_BG)
     c.rect(0, 0, width, height, fill=1)
 
-    # --- 2. PÄIS (LOGO JA PEALKIRI JOONDATUD) ---
+    # --- 2. PÄIS ---
     header_height = 100
     c.setFillColor(COLOR_DARK)
     c.rect(0, height - header_height, width, header_height, fill=1, stroke=0)
     
-    # Logo vasakul (Vertikaalselt tsentreeritud päises)
     if logo_file is not None:
         try:
             logo = ImageReader(logo_file)
@@ -37,17 +35,13 @@ def create_onboarding_pdf(logo_file):
             aspect = ih / float(iw)
             logo_width = 110
             logo_height = logo_width * aspect
-            # Arvutame y-positsiooni, et oleks päise keskel
             logo_y = height - header_height + (header_height - logo_height) / 2
             c.drawImage(logo, 40, logo_y, width=logo_width, height=logo_height, mask='auto')
         except:
             pass
 
-    # Pealkiri paremal (Samal joonel logoga)
-    # Kasutame VALGET värvi (mitte kollast) parema kontrasti jaoks
     c.setFillColor(COLOR_WHITE)
     c.setFont("Helvetica-Bold", 16)
-    # Teksti y-positsioon on sätitud logo keskkohaga kohakuti
     text_y_center = height - (header_height / 2) - 5
     c.drawRightString(width - 40, text_y_center + 8, "KOOSTÖÖ ALUSTAMISE PROTSESS")
     
@@ -55,14 +49,14 @@ def create_onboarding_pdf(logo_file):
     c.drawRightString(width - 40, text_y_center - 8, "Turundusjutud OÜ | Sinu partner kasumlikuks kasvuks")
 
     # --- 3. PROTSESSI SAMMUD ---
-    
-    # Defineerime Edu Mudeli punktid, mis lähevad 3. sammu sisse
-    success_pillars = [
-        "• Analüütika ja andmete usaldusväärsus (Tracking)",
-        "• Ärilised eesmärgid ja kasumlikkus (Unit Economics)",
-        "• Sihtimine ja kanalite valik (Audience & Mix)",
-        "• Loovstrateegia ja sõnumid (Creative Assets)",
-        "• Kasutajateekonna optimeerimine (CRO)"
+
+    # Edu mudeli andmed (Visuaalsete kaartide jaoks)
+    pillars_data = [
+        {"title": "TRACKING", "sub": "Analüütika", "color": COLOR_TEAL},
+        {"title": "EESMÄRGID", "sub": "Unit Economics", "color": COLOR_DARK},
+        {"title": "SIHTIMINE", "sub": "Audience Mix", "color": COLOR_ORANGE},
+        {"title": "LOOVUS", "sub": "Creative Assets", "color": COLOR_TEAL},
+        {"title": "TEEKOND", "sub": "CRO / UX", "color": COLOR_DARK},
     ]
 
     steps = [
@@ -82,7 +76,7 @@ def create_onboarding_pdf(logo_file):
             "num": "3", "title": "STRATEEGILINE PLAAN",
             "subtitle": "Tegevuskava kinnitamine",
             "text": "Loome tegevuskava koos selgete eesmärkide ja lahendustega. Lähtume plaanis järgmisest 5-osalisest edu mudelist:",
-            "pillars": success_pillars, # Siin on uued alampunktid
+            "has_visual_pillars": True, # Märge, et siia tuleb joonistada sambad
             "is_last": False
         },
         {
@@ -93,29 +87,28 @@ def create_onboarding_pdf(logo_file):
         }
     ]
 
-    current_y = height - 150
-    line_x = 65
-    box_width = 460
+    current_y = height - 140
+    line_x = 55
+    box_width = 480 # Veidi laiem kast, et 5 sammast mahuks hästi ära
 
     # Vertikaalne ühendusjoon
     c.setStrokeColor(COLOR_TEAL)
     c.setLineWidth(1.2)
-    # Joonistame joone algusest kuni peaaegu lõpuni (arvestuslikult)
     c.line(line_x, current_y, line_x, 180)
 
     for step in steps:
-        wrapper = textwrap.TextWrapper(width=80)
+        wrapper = textwrap.TextWrapper(width=90)
         wrapped_text = wrapper.wrap(step['text'])
         
-        # Arvutame kasti kõrguse
+        # Arvutame teksti kõrguse
         text_height = len(wrapped_text) * 14
-        pillars_height = 0
         
-        # Kui on sammaste (pillars) nimekiri, lisame sellele ruumi
-        if "pillars" in step:
-            pillars_height = (len(step['pillars']) * 14) + 10 # +10 vahe
+        # Arvutame lisaruumi sammaste jaoks
+        pillars_section_height = 0
+        if step.get('has_visual_pillars'):
+            pillars_section_height = 90 # Ruumi sammaste jaoks
             
-        box_height = 60 + text_height + pillars_height
+        box_height = 60 + text_height + pillars_section_height
 
         # Kasti joonistamine
         if step['is_last']:
@@ -150,14 +143,55 @@ def create_onboarding_pdf(logo_file):
             c.drawString(line_x + 35, text_y, line)
             text_y -= 14
             
-        # Kui on alampunktid (Edu mudel), joonistame need
-        if "pillars" in step:
-            text_y -= 5 # Väike vahe
-            c.setFont("Helvetica-Oblique", 9) # Kursiivis alampunktid
-            c.setFillColor(COLOR_TEAL)
-            for pillar in step['pillars']:
-                c.drawString(line_x + 50, text_y, pillar) # Treppimine paremale
-                text_y -= 14
+        # --- SAMMASTE JOONISTAMINE (kui on Step 3) ---
+        if step.get('has_visual_pillars'):
+            text_y -= 10 # Väike vahe teksti ja sammaste vahel
+            
+            # Arvutame sammaste mõõdud, et need mahuks kasti sisse
+            # Kasti laius on box_width (480). Jätame äärtesse ruumi (nt 35px padding)
+            available_width = box_width - 50 
+            p_gap = 8
+            p_width = (available_width - (4 * p_gap)) / 5
+            p_height = 70
+            
+            p_start_x = line_x + 45 # Alguspunkt kasti sees
+            
+            for i, p in enumerate(pillars_data):
+                px = p_start_x + (i * (p_width + p_gap))
+                py = text_y - p_height
+                
+                # Samba taust (valge)
+                c.setFillColor(COLOR_WHITE)
+                c.setStrokeColor(p['color'])
+                c.setLineWidth(1)
+                c.roundRect(px, py, p_width, p_height, 4, fill=1, stroke=1)
+                
+                # Värviline päis
+                c.setFillColor(p['color'])
+                c.rect(px, py + p_height - 15, p_width, 15, fill=1, stroke=0)
+                
+                # Number päisesse
+                c.setFillColor(COLOR_WHITE)
+                c.setFont("Helvetica-Bold", 8)
+                c.drawCentredString(px + p_width/2, py + p_height - 11, str(i + 1))
+                
+                # Pealkiri
+                c.setFillColor(p['color'])
+                c.setFont("Helvetica-Bold", 7)
+                # Kui pealkiri on pikk, vähendame fonti
+                if len(p['title']) > 8:
+                     c.setFont("Helvetica-Bold", 6)
+                c.drawCentredString(px + p_width/2, py + 35, p['title'])
+                
+                # Alampealkiri
+                c.setFillColor(HexColor("#555555"))
+                c.setFont("Helvetica", 6)
+                c.drawCentredString(px + p_width/2, py + 20, p['sub'])
+                
+                # Ikoon/Sümbol (lihtsustatud ring)
+                c.setStrokeColor(p['color'])
+                c.setFillColor(COLOR_WHITE)
+                c.circle(px + p_width/2, py + 10, 3, fill=1, stroke=1)
 
         current_y -= (box_height + 20)
 
@@ -182,7 +216,6 @@ def create_onboarding_pdf(logo_file):
     c.setFont("Helvetica-Bold", 11)
     c.drawCentredString(width/2, btn_y + 10, "BRONEERI KÕNE")
     
-    # Klikitav link nupu peale
     c.linkURL("https://calendly.com/turundusjutud", (btn_x, btn_y, btn_x + btn_w, btn_y + btn_h), relative=0)
     
     c.setFont("Helvetica", 8)
@@ -195,7 +228,7 @@ def create_onboarding_pdf(logo_file):
 
 # --- STREAMLIT UI ---
 st.title("📄 Turundusjutud Onboarding PDF")
-st.write("Genereeri ametlik koostöö alustamise protsess (Lõplik versioon).")
+st.write("Genereeri protsess, kus Edu Mudel on visuaalselt integreeritud tegevuskavasse.")
 
 logo = st.file_uploader("Vali logo (PNG)", type=['png'])
 
