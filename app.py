@@ -5,7 +5,6 @@ from reportlab.lib.colors import HexColor
 from reportlab.lib.utils import ImageReader
 import io
 import textwrap
-import random
 
 # --- BRÄNDI VÄRVID ---
 COLOR_TEAL = HexColor("#1A776F")
@@ -16,73 +15,40 @@ COLOR_BG = HexColor("#FAFAFA")
 COLOR_WHITE = HexColor("#FFFFFF")
 COLOR_TEXT = HexColor("#2E3A39")
 
-BRAND_COLORS = [COLOR_TEAL, COLOR_ORANGE, COLOR_YELLOW]
-
-# --- ABIFUNKTSIOONID DEKOORI JAOKS ---
-def draw_brand_elements(c, width, height):
-    """Joonistab taustale brändi sümboleid (ristid, ringid, kolmnurgad)."""
-    random.seed(42) 
-    for _ in range(18): # Veidi tihedam muster tühja ruumi täitmiseks
-        x = random.randint(30, int(width) - 30)
-        y = random.randint(120, int(height) - 150)
-        size = random.randint(6, 12)
-        color = random.choice(BRAND_COLORS)
-        shape = random.choice(['cross', 'circle', 'triangle'])
-        
-        c.setStrokeColor(color)
-        c.setLineWidth(1.2)
-        c.setDash([]) # PARANDUS: Tühi list tähistab pidevat joont
-        
-        if shape == 'cross':
-            c.line(x - size/2, y, x + size/2, y)
-            c.line(x, y - size/2, x, y + size/2)
-        elif shape == 'circle':
-            c.circle(x, y, size/2, stroke=1, fill=0)
-        elif shape == 'triangle':
-            path = c.beginPath()
-            path.moveTo(x, y + size/2)
-            path.lineTo(x - size/2, y - size/2)
-            path.lineTo(x + size/2, y - size/2)
-            path.close()
-            c.drawPath(path, stroke=1, fill=0)
-
 def create_onboarding_pdf(logo_file):
     buffer = io.BytesIO()
     c = canvas.Canvas(buffer, pagesize=A4)
     width, height = A4
     
-    # 1. Põhitaust
+    # 1. Põhitaust (puhas, ilma mustriteta)
     c.setFillColor(COLOR_BG)
     c.rect(0, 0, width, height, fill=1)
-    
-    # Lisa dekoratiivsed elemendid
-    draw_brand_elements(c, width, height)
 
     # --- 2. PÄIS (HEADER) ---
-    header_height = 140
+    header_height = 160 # Tõstsime päise kõrgust
     c.setFillColor(COLOR_DARK)
     c.rect(0, height - header_height, width, header_height, fill=1, stroke=0)
     
-    # Logo paigutus (parandatud, et ei lõikaks poolt ära)
+    # Logo paigutus - nihutatud allapoole, et vältida lõikamist
     if logo_file is not None:
         try:
             logo = ImageReader(logo_file)
             iw, ih = logo.getSize()
             aspect = ih / float(iw)
-            logo_width = 160
+            logo_width = 120
             logo_height = logo_width * aspect
-            # Tõstsime logo positsiooni veidi kõrgemale
-            c.drawImage(logo, (width - logo_width)/2, height - 85, width=logo_width, height=logo_height, mask='auto')
+            # y-koordinaat on nüüd madalamal (height - 115)
+            c.drawImage(logo, (width - logo_width)/2, height - 115, width=logo_width, height=logo_height, mask='auto')
         except:
             pass
 
     c.setFillColor(COLOR_WHITE)
     c.setFont("Helvetica-Bold", 18)
-    c.drawCentredString(width/2, height - 105, "STRATEEGILINE KOOSTÖÖMUDEL")
+    c.drawCentredString(width/2, height - 130, "STRATEEGILINE KOOSTÖÖMUDEL")
     
     c.setFillColor(COLOR_YELLOW)
     c.setFont("Helvetica", 10)
-    c.drawCentredString(width/2, height - 122, "Süsteemne teekond juhuslikest kampaaniatest kasumliku kasvumootorini.")
+    c.drawCentredString(width/2, height - 145, "Süsteemne teekond juhuslikest kampaaniatest kasumliku kasvumootorini.")
 
     # --- 3. PROTSESSI SAMMUD ---
     steps = [
@@ -90,84 +56,101 @@ def create_onboarding_pdf(logo_file):
             "num": "1",
             "title": "TUTVUMISKÕNE",
             "subtitle": "Lähtepunkti ja eesmärkide kaardistamine",
-            "text": "30-minutiline vestlus, kus kaardistame seni tehtud turundustegevused, saavutatud tulemused ja konkreetsed ärieesmärgid, kuhu soovitakse jõuda.",
-            "highlight": False
+            "text": "30-minutiline vestlus, kus klient annab detailse ülevaate seni tehtud turundustegevustest, tulemustest ja konkreetsetest ärieesmärkidest, kuhu soovitakse jõuda.",
+            "is_last": False
         },
         {
             "num": "2",
             "title": "DIAGNOSTIKA JA LEPINGUD",
             "subtitle": "Kasvuvõimaluste süvaanalüüs",
-            "text": "Enne töö algust allkirjastame konfidentsiaalsuslepingu (NDA) ja teenuslepingu. Teostame reklaamkontode ja andmete auditi, et tuvastada ebaefektiivsed kulud ja kasvupotentsiaal.",
-            "highlight": True
+            "text": "Allkirjastame konfidentsiaalsuslepingu ja teenuslepingu enne tööga alustamist. Teostame reklaamkontode ja andmete seadistuse auditi, et tuvastada ebaefektiivsed kulud.",
+            "is_last": False
         },
         {
             "num": "3",
             "title": "STRATEEGILINE PLAAN",
             "subtitle": "Elluviidav tegevuskava kolmes vaates",
-            "text": "Koostame plaani, mis koosneb kolmest sambast: 1. Analüütika ja tracking (mõõdikute korrastamine); 2. Kampaaniate tehniline seadistus ja struktuur; 3. Loominguliste varade strateegia.",
-            "highlight": False
+            "text": "Koostame plaani, mis koosneb kolmest sambast: 1. Analüütika ja tracking (mõõdikute korrastamine); 2. Kampaaniate tehniline seadistus; 3. Loominguliste varade strateegia.",
+            "is_last": False
         },
         {
             "num": "4",
             "title": "START JA OPTIMEERIMINE",
-            "subtitle": "Süsteemne haldus ja tulemuste skaleerimine",
+            "subtitle": "Süsteemne haldus ja skaleerimine",
             "text": "Käivitame kampaaniad ja asume järjepidevale optimeerimisele. Koostöö on läbipaistev ja suunatud objektiivsele tulule. Leping on ülesöeldav 1-päevase etteteatamisega.",
-            "highlight": False
+            "is_last": True
         }
     ]
 
-    current_y = height - 190
+    current_y = height - 200
     line_x = 75
+    box_width = 440
+    box_padding_top = 15
+    box_padding_bottom = 20
 
     # Vertikaalne joon
     c.setStrokeColor(COLOR_TEAL)
     c.setLineWidth(1.2)
     c.setDash([]) 
-    c.line(line_x, current_y, line_x, 190)
+    c.line(line_x, current_y, line_x, 150)
 
     for step in steps:
-        if step['highlight']:
-            c.setFillColor(HexColor("#F2F7F6"))
-            c.setStrokeColor(COLOR_ORANGE)
-            c.setLineWidth(0.5)
-            c.roundRect(line_x + 25, current_y - 85, 440, 100, 8, fill=1, stroke=1)
-            c.setFillColor(COLOR_ORANGE)
-            c.setFont("Helvetica-Bold", 8)
-            c.drawString(line_x + 365, current_y + 3, "DIAGNOSTIKA FAAS")
+        # Teksti mähkimine kõrguse arvutamiseks
+        wrapper = textwrap.TextWrapper(width=70)
+        wrapped_text = wrapper.wrap(step['text'])
+        # Arvutame kasti kõrguse dünaamiliselt
+        line_count = len(wrapped_text)
+        box_height = 65 + (line_count * 14) 
 
-        c.setFillColor(COLOR_ORANGE if step['highlight'] else COLOR_TEAL)
+        # KASTI JOONISTAMINE
+        # Kui on viimane punkt, siis oranž, muidu teal/valge
+        if step['is_last']:
+            c.setFillColor(HexColor("#FFF7F2")) # Hele oranž taust
+            c.setStrokeColor(COLOR_ORANGE)
+        else:
+            c.setFillColor(HexColor("#F7F9F9")) # Hele teal taust
+            c.setStrokeColor(COLOR_TEAL)
+            
+        c.setLineWidth(1)
+        # Joonistame kasti (suurema ümarusega nurgad = 12)
+        c.roundRect(line_x + 25, current_y - box_height + 10, box_width, box_height, 12, fill=1, stroke=1)
+
+        # Number ja Pallikene
+        c.setFillColor(COLOR_ORANGE if step['is_last'] else COLOR_TEAL)
         c.circle(line_x, current_y, 14, fill=1, stroke=0)
         c.setFillColor(COLOR_WHITE)
         c.setFont("Helvetica-Bold", 11)
         c.drawCentredString(line_x, current_y - 4, step['num'])
 
-        c.setFillColor(COLOR_TEAL if not step['highlight'] else COLOR_ORANGE)
+        # Pealkiri
+        c.setFillColor(COLOR_ORANGE if step['is_last'] else COLOR_TEAL)
         c.setFont("Helvetica-Bold", 13)
-        c.drawString(line_x + 35, current_y + 3, step['title'])
+        c.drawString(line_x + 45, current_y - box_padding_top, step['title'])
         
+        # Alampealkiri
         c.setFillColor(COLOR_TEXT)
         c.setFont("Helvetica-Bold", 10)
-        c.drawString(line_x + 35, current_y - 14, step['subtitle'])
+        c.drawString(line_x + 45, current_y - box_padding_top - 16, step['subtitle'])
 
+        # Sisu tekst (rohkem ruumi/paddingut)
         c.setFont("Helvetica", 10)
-        wrapper = textwrap.TextWrapper(width=72)
-        text_y = current_y - 28
-        for line in wrapper.wrap(step['text']):
-            c.drawString(line_x + 35, text_y, line)
-            text_y -= 14
+        text_start_y = current_y - box_padding_top - 34
+        for line in wrapped_text:
+            c.drawString(line_x + 45, text_start_y, line)
+            text_start_y -= 14
         
-        current_y -= 115
+        # Liigume järgmise sammu juurde (lisame kasti kõrguse + vahe)
+        current_y -= (box_height + 25)
 
     # --- 4. JALUS (FOOTER) ---
-    footer_y = 100
+    footer_height = 100
     c.setFillColor(COLOR_DARK)
-    c.rect(0, 0, width, footer_y, fill=1, stroke=0)
+    c.rect(0, 0, width, footer_height, fill=1, stroke=0)
     
     c.setFillColor(COLOR_WHITE)
     c.setFont("Helvetica-Bold", 11)
     c.drawCentredString(width/2, 65, "Alustame koostööd strateegilise kõnega")
     
-    # Calendly link kollase ja rasvasena
     c.setFillColor(COLOR_YELLOW)
     c.setFont("Helvetica-Bold", 10)
     c.drawCentredString(width/2, 45, "BRONEERI KÕNE: calendly.com/turundusjutud")
@@ -182,9 +165,9 @@ def create_onboarding_pdf(logo_file):
 
 # --- STREAMLIT UI ---
 st.title("📄 Turundusjutud PDF Generaator")
-st.write("Genereeri visuaalne 4-etapiline teekond koos brändielementidega.")
+st.write("Genereeri puhas ja professionaalne 4-etapiline koostöömudel.")
 
-logo = st.file_uploader("Lae üles logo (PNG)", type=['png'])
+logo = st.file_uploader("Lae üles logo (ruudukujuline PNG)", type=['png'])
 
 if st.button("Loo PDF"):
     pdf_bytes = create_onboarding_pdf(logo)
