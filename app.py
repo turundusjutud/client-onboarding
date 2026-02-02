@@ -52,32 +52,32 @@ def create_onboarding_pdf(logo_file):
 
     # --- 3. PROTSESSI SAMMUD ---
 
-    # Edu mudeli andmed (Põhjalikumad kirjeldused)
+    # Edu mudeli andmed
     pillars_data = [
         {
             "title": "TRACKING", 
             "sub": "Analüütika", 
-            "desc": "Seadistame GA4 ja konversioonid, et mõõta reaalset äritulemust, mitte edevusnumbreid."
+            "desc": "Seadistame GA4 ja konversioonid, et mõõta reaalset äritulemust."
         },
         {
             "title": "EESMÄRGID", 
             "sub": "Unit Economics", 
-            "desc": "Paneme paika kasumlikkuse mudeli, et iga reklaami investeeritud euro tooks tagasi rohkem."
+            "desc": "Paneme paika kasumlikkuse mudeli ja ROI eesmärgid."
         },
         {
             "title": "SIHTIMINE", 
             "sub": "Audience Mix", 
-            "desc": "Leiame sinu ideaalse kliendi läbi täpse audientsiloome ja remarketingi strateegiate."
+            "desc": "Leiame sinu ideaalse kliendi läbi täpse audientsiloome."
         },
         {
             "title": "LOOVUS", 
             "sub": "Creative Assets", 
-            "desc": "Eristuvad visuaalid ja sõnumid, mis kõnetavad sihtrühma ja tõstavad klikkimise määra."
+            "desc": "Eristuvad visuaalid ja sõnumid, mis tõstavad klikkimise määra."
         },
         {
             "title": "TEEKOND", 
             "sub": "CRO / UX", 
-            "desc": "Optimeerime maandumislehe ja ostuteekonna, et külastajast saaks maksev klient."
+            "desc": "Optimeerime maandumislehe, et külastajast saaks klient."
         },
     ]
 
@@ -122,21 +122,21 @@ def create_onboarding_pdf(logo_file):
         
         pillars_section_height = 0
         if step.get('has_visual_pillars'):
-            pillars_section_height = 110 # Rohkem ruumi pikema teksti jaoks
+            pillars_section_height = 120 # Ruumi sammaste jaoks
             
         box_height = 60 + text_height + pillars_section_height
         
         box_top = current_y_cursor
         
-        # Numbrite asukoht: fikseeritud kaugus kasti ülemisest äärest
-        circle_offset = 35 
+        # Numbrite asukoht: Joondatud kasti ülemise äärega (offset 20px)
+        circle_offset = 20 
         circle_y = box_top - circle_offset
         
         layout_data.append({
             "step": step,
             "box_top": box_top,
             "box_height": box_height,
-            "circle_y": circle_y, # Salvestame ringi asukoha
+            "circle_y": circle_y,
             "text_lines": wrapped_text
         })
         
@@ -144,22 +144,24 @@ def create_onboarding_pdf(logo_file):
 
     # --- JOONISTAMINE ---
 
-    # 1. Joonista ühendav joon (Esimesest ringist kuni viimase kasti alla)
+    # 1. Joonista ühendav joon
     start_line_y = layout_data[0]['circle_y']
-    
-    # Arvutame joone lõpu: viimase kasti põhi - 20px
     last_box_bottom = layout_data[-1]['box_top'] - layout_data[-1]['box_height']
-    end_line_y = last_box_bottom - 25 
+    
+    # Lõpmatuse sümboli asukoht (palju lähemal kastile)
+    infinity_y = last_box_bottom - 15
+    
+    # Joon lõpeb enne sümbolit (jätame väikese vahe, nt 10px sümboli kohale)
+    end_line_y = infinity_y + 12 
     
     c.setStrokeColor(COLOR_TEAL)
     c.setLineWidth(2)
     c.line(line_x, start_line_y, line_x, end_line_y)
     
-    # Lõpmatuse sümbol joone lõppu
+    # Lõpmatuse sümbol
     c.setFont("Helvetica", 24)
     c.setFillColor(COLOR_TEAL)
-    # Tsentreerime sümboli joone otsa (Y koordinaati veidi nihutades)
-    c.drawCentredString(line_x, end_line_y - 8, "∞")
+    c.drawCentredString(line_x, infinity_y - 8, "∞") # -8 tsentreerimiseks kõrguses
 
 
     # 2. Joonista kastid ja sisu
@@ -169,18 +171,23 @@ def create_onboarding_pdf(logo_file):
         box_height = item['box_height']
         circle_y = item['circle_y']
         
-        # Kasti joonistamine
+        # Kasti värvid
         if step['is_last']:
-            c.setFillColor(HexColor("#FFF7F2"))
-            c.setStrokeColor(COLOR_ORANGE)
+            bg_color = HexColor("#FFF7F2")
+            stroke_color = COLOR_ORANGE
+            main_color = COLOR_ORANGE
         else:
-            c.setFillColor(HexColor("#F7F9F9"))
-            c.setStrokeColor(COLOR_TEAL)
+            bg_color = HexColor("#F7F9F9")
+            stroke_color = COLOR_TEAL
+            main_color = COLOR_TEAL
         
+        # Kasti joonistamine
+        c.setFillColor(bg_color)
+        c.setStrokeColor(stroke_color)
         c.roundRect(line_x + 25, box_top - box_height, box_width, box_height, 10, fill=1, stroke=1)
 
-        # Ring ja Number (Üleval ääres)
-        c.setFillColor(COLOR_ORANGE if step['is_last'] else COLOR_TEAL)
+        # Ring ja Number (Vasakul joonel)
+        c.setFillColor(main_color)
         c.setStrokeColor(COLOR_BG) 
         c.circle(line_x, circle_y, 14, fill=1, stroke=1)
         
@@ -192,7 +199,7 @@ def create_onboarding_pdf(logo_file):
         content_start_y = box_top - 25
 
         # Pealkirjad
-        c.setFillColor(COLOR_ORANGE if step['is_last'] else COLOR_TEAL)
+        c.setFillColor(main_color)
         c.setFont("Helvetica-Bold", 12)
         c.drawString(line_x + 45, content_start_y, step['title'])
         
@@ -209,12 +216,12 @@ def create_onboarding_pdf(logo_file):
             
         # --- SAMMASTE JOONISTAMINE (Step 3) ---
         if step.get('has_visual_pillars'):
-            pillars_y = text_y - 10 
+            pillars_y = text_y - 15 
             
             available_width = box_width - 60 
             p_gap = 8
             p_width = (available_width - (4 * p_gap)) / 5
-            p_height = 95 # Suurendatud kõrgus teksti mahutamiseks
+            p_height = 95
             
             p_start_x = line_x + 55 
             
@@ -222,38 +229,61 @@ def create_onboarding_pdf(logo_file):
                 px = p_start_x + (i * (p_width + p_gap))
                 py = pillars_y - p_height
                 
-                # Samba taust
+                pillar_color = COLOR_TEAL
+                pillar_radius = 8
+                
+                # --- 1. Joonista kasti taust ja piirjoon ---
                 c.setFillColor(COLOR_WHITE)
-                c.setStrokeColor(COLOR_TEAL)
+                c.setStrokeColor(pillar_color)
                 c.setLineWidth(1)
-                c.roundRect(px, py, p_width, p_height, 8, fill=1, stroke=1)
+                c.roundRect(px, py, p_width, p_height, pillar_radius, fill=1, stroke=1)
                 
-                # Päis (Header)
-                c.setFillColor(COLOR_TEAL)
-                c.roundRect(px, py + p_height - 20, p_width, 20, 4, fill=1, stroke=0) 
+                # --- 2. Joonista värviline päis (Clippinguga) ---
+                c.saveState()
                 
-                # Number päises (tagasi toodud)
+                # Loome "clipping path" ehk maski, mis on sama kujuga nagu sammas
+                path = c.beginPath()
+                path.roundRect(px, py, p_width, p_height, pillar_radius)
+                c.clipPath(path, stroke=0, fill=0)
+                
+                # Joonistame kandilise kasti päisesse (mask lõikab nurgad ümaraks)
+                c.setFillColor(pillar_color)
+                c.rect(px, py + p_height - 22, p_width, 22, fill=1, stroke=0)
+                
+                c.restoreState()
+                
+                # --- 3. Taasta piirjoon päise ümber (valikuline, puhtuse mõttes) ---
+                c.setStrokeColor(pillar_color)
+                c.setLineWidth(1)
+                c.roundRect(px, py, p_width, p_height, pillar_radius, fill=0, stroke=1)
+
+                # --- 4. Sisu ---
+                
+                # Number päises
                 c.setFillColor(COLOR_WHITE)
-                c.setFont("Helvetica-Bold", 10)
-                c.drawCentredString(px + p_width/2, py + p_height - 14, str(i + 1))
+                c.setFont("Helvetica-Bold", 11)
+                c.drawCentredString(px + p_width/2, py + p_height - 16, str(i + 1))
                 
                 # Pealkiri
-                c.setFillColor(COLOR_TEAL)
+                c.setFillColor(pillar_color)
                 c.setFont("Helvetica-Bold", 7)
                 if len(p['title']) > 8:
                      c.setFont("Helvetica-Bold", 6)
-                c.drawCentredString(px + p_width/2, py + p_height - 32, p['title'])
+                c.drawCentredString(px + p_width/2, py + p_height - 35, p['title'])
                 
-                # Kirjeldus (3 rida)
+                # Alampealkiri
+                c.setFillColor(HexColor("#555555"))
+                c.setFont("Helvetica", 6)
+                c.drawCentredString(px + p_width/2, py + p_height - 45, p['sub'])
+                
+                # Kirjeldus
                 c.setFillColor(COLOR_TEXT)
                 c.setFont("Helvetica", 6)
                 
-                # Teksti murdmine väga kitsaks
-                p_wrapper = textwrap.TextWrapper(width=16) 
+                p_wrapper = textwrap.TextWrapper(width=15) 
                 desc_lines = p_wrapper.wrap(p['desc'])
                 
-                # Piirame 4 reaga, et kasti ära mahuks
-                desc_y = py + p_height - 44
+                desc_y = py + p_height - 58
                 for d_line in desc_lines[:4]: 
                     c.drawCentredString(px + p_width/2, desc_y, d_line)
                     desc_y -= 8
