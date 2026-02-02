@@ -1,275 +1,186 @@
 import streamlit as st
-from PIL import Image
-import os
+from reportlab.lib.pagesizes import A4
+from reportlab.pdfgen import canvas
+from reportlab.lib.colors import HexColor
+from reportlab.lib.utils import ImageReader
+import io
+import textwrap
 
 # --- LEHE SEADISTUSED ---
-st.set_page_config(
-    page_title="Turundusjutud | Onboarding",
-    page_icon="📣",
-    layout="wide",
-    initial_sidebar_state="expanded"
-)
+st.set_page_config(page_title="PDF Generaator", page_icon="📄")
 
-# --- BRÄNDI VÄRVID JA STIIL (CSS) ---
-# Kasutame sinu brändi värve: 
-# Teal: #1A776F, Dark: #052623, Orange: #FF7F40, Yellow: #FFC876, Bg: #FAFAFA
-def local_css():
-    st.markdown("""
-    <style>
-        /* Põhitaust */
-        .stApp {
-            background-color: #FAFAFA;
-            color: #2E3A39;
-            font-family: 'Helvetica', 'Arial', sans-serif; /* Aftika asendus */
+# --- BRÄNDI VÄRVID ---
+COLOR_TEAL = HexColor("#1A776F")
+COLOR_DARK = HexColor("#052623")
+COLOR_ORANGE = HexColor("#FF7F40")
+COLOR_YELLOW = HexColor("#FFC876")
+COLOR_BG = HexColor("#FAFAFA")
+COLOR_WHITE = HexColor("#FFFFFF")
+
+# --- PDF GENEREERIMISE FUNKTSIOON ---
+def create_onboarding_pdf(logo_file):
+    buffer = io.BytesIO()
+    c = canvas.Canvas(buffer, pagesize=A4)
+    width, height = A4
+    
+    # Taust
+    c.setFillColor(COLOR_BG)
+    c.rect(0, 0, width, height, fill=1)
+
+    # --- 1. PÄIS (HEADER) ---
+    header_height = 120
+    c.setFillColor(COLOR_DARK)
+    c.rect(0, height - header_height, width, header_height, fill=1, stroke=0)
+    
+    # Logo
+    if logo_file is not None:
+        try:
+            logo = ImageReader(logo_file)
+            # Arvutame logo kuvasuhte, et see ei veniks välja
+            iw, ih = logo.getSize()
+            aspect = ih / float(iw)
+            logo_width = 150
+            logo_height = logo_width * aspect
+            # Paigutame logo üles keskele
+            c.drawImage(logo, (width - logo_width)/2, height - 85, width=logo_width, height=logo_height, mask='auto')
+        except:
+            # Kui pilti pole, kirjutame teksti
+            c.setFillColor(COLOR_WHITE)
+            c.setFont("Helvetica-Bold", 30)
+            c.drawCentredString(width/2, height - 60, "TURUNDUSJUTUD")
+
+    # Pealkiri
+    c.setFillColor(COLOR_WHITE)
+    c.setFont("Helvetica-Bold", 22)
+    c.drawCentredString(width/2, height - header_height + 40, "Sinu teekond kasumlike kampaaniateni")
+    
+    # Alampealkiri
+    c.setFillColor(COLOR_YELLOW)
+    c.setFont("Helvetica", 12)
+    c.drawCentredString(width/2, height - header_height + 20, "Läbipaistev 5-etapiline protsess ideest tulemusteni")
+
+    # --- 2. AJATELG (TIMELINE) ---
+    
+    # Andmed sammude kohta
+    steps = [
+        {
+            "title": "1. Tutvustus ja Eesmärgid (Päev 1)",
+            "text": "Me ei müü kotti pähe. Kaardistame sinu äri hetkeseisu ja eesmärgid. Hindame, kas Google Ads on sulle praegu tulus lahendus. Tulemuseks on selgus potentsiaalis.",
+            "highlight": False
+        },
+        {
+            "title": "2. Pakkumine ja Kokkulepe (Päev 2)",
+            "text": "Saadame personaalse tegevuskava. Meie hinnastus on läbipaistev: eraldi ühekordne seadistustasu ja igakuine haldus. Sõlmime NDA ja lepingu.",
+            "highlight": False
+        },
+        {
+            "title": "3. AUDIT JA SEADISTUS (Päevad 3-5)",
+            "text": "See on TASULINE DIAGNOOS. Me ei tee tasuta 'müügiauditit'. Siseneme kontole, kontrollime kooditasandil trackingut (GA4), puhastame märksõnad ja loome tehnilise vundamendi.",
+            "highlight": True # See samm saab erilise disaini
+        },
+        {
+            "title": "4. Strateegia ja Ülevaatus (Päev 6)",
+            "text": "Tutvustame auditi leide ja 90 päeva strateegiat. Sina näed ja kinnitad reklaamtekste ning eelarveid enne, kui need eetrisse lähevad.",
+            "highlight": False
+        },
+        {
+            "title": "5. Start ja Optimeerimine (Päev 7+)",
+            "text": "Kampaaniad on aktiivsed. Algab õppimisperiood, kus algoritm kogub andmeid. Meie optimeerime iganädalaselt, sina saad raporti kord kuus.",
+            "highlight": False
         }
+    ]
+
+    start_y = height - header_height - 60
+    line_x = 60 # Joone asukoht vasakult
+    
+    # Joonista vertikaalne joon
+    c.setStrokeColor(COLOR_TEAL)
+    c.setLineWidth(2)
+    c.line(line_x, start_y, line_x, 150)
+
+    current_y = start_y
+
+    for step in steps:
+        # Arvuta kasti kõrgus teksti põhjal
+        text_width = 400
+        wrapper = textwrap.TextWrapper(width=75) # Umbes tähemärkide arv real
+        wrapped_text = wrapper.wrap(step['text'])
+        block_height = 40 + (len(wrapped_text) * 15)
         
-        /* Sidebar taust */
-        [data-testid="stSidebar"] {
-            background-color: #052623;
-        }
-        [data-testid="stSidebar"] * {
-            color: #FAFAFA !important;
-        }
+        # Kui on highlight (Audit), joonista taustakast
+        if step['highlight']:
+            c.setFillColor(HexColor("#FFF3E0")) # Väga hele oranž taust
+            c.setStrokeColor(COLOR_ORANGE)
+            c.setLineWidth(1)
+            # x, y, width, height (ReportLab koordinaadid on alt üles)
+            c.roundRect(line_x + 20, current_y - block_height + 10, 480, block_height, 10, fill=1, stroke=1)
+            
+            # Lisa "PAID STEP" silt
+            c.setFillColor(COLOR_ORANGE)
+            c.setFont("Helvetica-Bold", 8)
+            c.drawString(line_x + 400, current_y - 15, "DIAGNOSTIKA FAAS")
 
-        /* Pealkirjad */
-        h1, h2, h3 {
-            color: #1A776F !important;
-            font-weight: 700;
-        }
-        
-        /* Sektsiooni eraldajad */
-        hr {
-            border-color: #FFC876;
-        }
+        # Pallikene joone peal
+        c.setFillColor(COLOR_ORANGE if step['highlight'] else COLOR_TEAL)
+        c.setStrokeColor(COLOR_WHITE)
+        c.setLineWidth(2)
+        c.circle(line_x, current_y - 10, 8, fill=1, stroke=1)
 
-        /* Nupud (Orange) */
-        .stButton>button {
-            background-color: #FF7F40;
-            color: white;
-            border-radius: 8px;
-            border: none;
-            padding: 10px 24px;
-            font-weight: bold;
-        }
-        .stButton>button:hover {
-            background-color: #e66b2e;
-            color: white;
-            border: none;
-        }
+        # Pealkiri
+        c.setFillColor(COLOR_TEAL if not step['highlight'] else COLOR_ORANGE)
+        c.setFont("Helvetica-Bold", 14)
+        c.drawString(line_x + 35, current_y - 15, step['title'])
 
-        /* Info kastid */
-        .info-box {
-            padding: 20px;
-            border-radius: 10px;
-            background-color: #ffffff;
-            border-left: 5px solid #1A776F;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-            margin-bottom: 20px;
-        }
-        
-        /* Protsessi sammud */
-        .step-header {
-            font-size: 24px;
-            color: #052623;
-            margin-bottom: 10px;
-        }
-    </style>
-    """, unsafe_allow_html=True)
+        # Sisu tekst
+        c.setFillColor(COLOR_DARK)
+        c.setFont("Helvetica", 11)
+        text_y = current_y - 35
+        for line in wrapped_text:
+            c.drawString(line_x + 35, text_y, line)
+            text_y -= 15
 
-local_css()
+        current_y -= (block_height + 25) # Liigu allapoole järgmise sammu jaoks
 
-# --- FUNKTSIOONID LEHTEDE JAOKS ---
+    # --- 3. JALUS (FOOTER) ---
+    footer_height = 80
+    c.setFillColor(COLOR_TEAL)
+    c.rect(0, 0, width, footer_height, fill=1, stroke=0)
+    
+    # Muster (Dekoratiivsed elemendid)
+    c.setStrokeColor(COLOR_YELLOW)
+    c.setLineWidth(1)
+    c.circle(50, 40, 10, stroke=1, fill=0)
+    c.circle(width-50, 40, 10, stroke=1, fill=0)
+    
+    c.setFillColor(COLOR_WHITE)
+    c.setFont("Helvetica-Bold", 12)
+    c.drawCentredString(width/2, 45, "Kas oled valmis kasvuks?")
+    
+    c.setFont("Helvetica", 10)
+    c.drawCentredString(width/2, 25, "Kirjuta: info@turundusjutud.ee  |  Helista: +372 5555 5555")
 
-def show_intro():
-    st.title("Tere tulemast Turundusjuttudesse! 👋")
-    st.markdown("### Sinu teejuht edukate Google Ads kampaaniateni")
-    
-    col1, col2 = st.columns([2, 1])
-    
-    with col1:
-        st.markdown("""
-        Olen väga rõõmus, et tunned huvi koostöö vastu. Minu eesmärk ei ole lihtsalt reklaame üles panna, 
-        vaid ehitada süsteem, mis toob sulle reaalselt kasumit.
-        
-        Selleks, et meie koostöö oleks sujuv ja läbipaistev, olen loonud selle **5-etapilise protsessi**.
-        Vasakult menüüst saad liikuda läbi etappide, et näha täpselt, mis meid ees ootab.
-        """)
-        
-        st.info("💡 **Miks see protsess hea on?** Sest see välistab üllatused. Sina tead täpselt, mille eest maksad, ja mina saan keskenduda tulemustele.")
+    c.save()
+    buffer.seek(0)
+    return buffer
 
-    with col2:
-        # Siia võiksid panna brändielemendi pildi
-        st.markdown(
-            """
-            <div style="background-color:#1A776F; padding:20px; border-radius:15px; text-align:center;">
-                <h1 style="color:white !important; font-size: 50px;">🚀</h1>
-                <p style="color:white;">Valmis stardiks?</p>
-            </div>
-            """, unsafe_allow_html=True
-        )
+# --- STREAMLIT UI ---
+st.title("📄 Onboarding PDF Generaator")
+st.markdown("Lae üles oma logo ja lae alla valmis PDF, mida kliendile saata.")
 
-def show_step1():
-    st.header("1. Samm: Tutvustav kõne (Intro)")
-    st.markdown("##### Eesmärk: Sobivuse ja potentsiaali hindamine")
-    
-    st.markdown("""
-    <div class="info-box">
-    Selles faasis me ei sukellu veel tehnilistesse detailidesse. Meie eesmärk on aru saada, kas Google Ads on sinu ärile praegu õige tööriist.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown("✅ **Mida me arutame:**")
-        st.markdown("""
-        * Sinu äri hetkeseis ja eesmärgid.
-        * Sinu ideaalne klient.
-        * Varasemad kogemused reklaamiga.
-        * Eelarve raamid.
-        """)
-    with col2:
-        st.markdown("❌ **Mida me EI tee:**")
-        st.markdown("""
-        * Ma ei logi veel sinu kontole sisse.
-        * Ma ei tee tasuta auditit (selgitame 4. sammus miks).
-        * Me ei sea üles kampaaniaid.
-        """)
+uploaded_logo = st.file_uploader("Lae üles logo (PNG formaat, soovitavalt läbipaistva taustaga)", type=['png'])
 
-def show_step2():
-    st.header("2. Samm: Hinnapakkumine ja Strateegia")
-    st.markdown("##### Eesmärk: Fikseerida töömaht ja investeering")
+if st.button("Genereeri PDF"):
+    pdf_bytes = create_onboarding_pdf(uploaded_logo)
     
-    st.write("Pärast meie kõne koostan ma personaalse pakkumise. Minu hinnastus on läbipaistev ja koosneb kahest osast:")
+    st.success("PDF valmis! Lae alla siit:")
     
-    c1, c2 = st.columns(2)
-    
-    with c1:
-        st.markdown("""
-        ### 1. Ühekordne Häälestustasu
-        **Sisaldab:**
-        * 🔍 Konto süva-audit (Paid Diagnostic)
-        * 🛠 Tehniline seadistus (GA4, GTM)
-        * 🎯 Märksõnade uuring ja strateegia
-        * 🚫 Negatiivsete märksõnade listid
-        """)
-        
-    with c2:
-        st.markdown("""
-        ### 2. Igakuine Haldustasu
-        **Sisaldab:**
-        * 📈 Iganädalane optimeerimine
-        * 🧪 A/B testimine
-        * 📊 Raporteerimine
-        * 📞 Jooksev suhtlus
-        """)
-
-    st.warning("⚠️ **NB!** Audit on eraldi tasustatud teenus, sest see on põhjalik diagnostika, mille tulemused (raport) jäävad sulle.")
-
-def show_step3():
-    st.header("3. Samm: Leping ja Turvalisus")
-    st.markdown("##### Eesmärk: Juriidiline korrektsus ja andmekaitse")
-    
-    st.markdown("""
-    <div class="info-box">
-    Enne töö alustamist vormistame kõik korrektselt. See kaitseb nii sind kui mind.
-    </div>
-    """, unsafe_allow_html=True)
-    
-    st.markdown("""
-    **Selles etapis toimub:**
-    1. **NDA (Konfidentsiaalsusleping):** Sinu ärisaladused on kaitstud.
-    2. **Teenusleping:** Fikseerime kohustused ja tähtajad.
-    3. **Ettemaks:** Auditi ja seadistuse arve tasumine.
-    """)
-    
-    st.error("🛑 Ma ei küsi ligipääsu sinu kontodele enne, kui paberid on korras. See on sinu andmete turvalisuse huvides.")
-
-def show_step4():
-    st.header("4. Samm: Ligipääs ja Tasuline Audit 🕵️‍♂️")
-    st.markdown("##### Eesmärk: Diagnoos ja 'Musta kasti' avamine")
-    
-    st.markdown("See on faas, mille eest sa maksid ühekordse tasu. Nüüd algab päris töö.")
-    
-    with st.expander("Miks audit on tasuline?", expanded=True):
-        st.write("""
-        Paljud agentuurid teevad tasuta "auditeid", mis on tegelikult müügitrikid. 
-        Minu audit on **meditsiiniline läbivaatus**. Ma lähen koodi tasandile, kontrollin, kas sinu veebileht
-        üldse saadab Google'ile õigeid andmeid, ja analüüsin, kuhu raha kaob.
-        """)
-    
-    st.subheader("Mida ma kontrollin:")
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.markdown("#### 🎯 Tracking")
-        st.caption("Kas ostud/päringud tegelikult mõõdetakse? Kas GA4 ja Google Ads räägivad ühte keelt?")
-    with col2:
-        st.markdown("#### 💸 Kulutused")
-        st.caption("Search Terms reporti analüüs – kui palju raha kulub ebaolulistele märksõnadele?")
-    with col3:
-        st.markdown("#### ⚙️ Struktuur")
-        st.caption("Kas kampaaniad on loogiliselt üles ehitatud või on kõik 'segasummasuvila'?")
-
-    st.success("Tulemus: Põhjalik PDF raport vigadest ja parendusettepanekutest.")
-
-def show_step5():
-    st.header("5. Samm: Strateegia ja Käivitamine 🚀")
-    st.markdown("##### Eesmärk: Tulemuste toomine")
-    
-    st.write("Kui audit on tehtud, esitlen sulle tulemusi ja 90-päeva plaani.")
-    
-    timeline = {
-        "Nädal 1": "Kampaaniate ehitus ja reklaamtekstide kinnitamine",
-        "Nädal 2-4": "Õppimisperiood (Learning Phase) - algoritm kogub andmeid",
-        "Kuu 2": "Optimeerimine ja CPA (Cost Per Acquisition) alandamine",
-        "Kuu 3": "Skaleerimine - tõstame eelarvet seal, mis töötab"
-    }
-    
-    for time, activity in timeline.items():
-        st.markdown(f"**{time}:** {activity}")
-        st.progress(100 if time == "Nädal 1" else (70 if "2-4" in time else (40 if "Kuu 2" in time else 10)))
-
-# --- SIDEBAR NAVIGATSIOON ---
-
-with st.sidebar:
-    # Proovi laadida logo, kui fail puudub, kuva tekst
-    if os.path.exists("logo.png"):
-        image = Image.open("logo.png")
-        st.image(image, width=200)
-    else:
-        st.markdown("# TURUNDUSJUTUD")
-    
-    st.markdown("---")
-    
-    # Raadionupud on stiliseeritud CSS-iga
-    selected_step = st.radio(
-        "Sinu teekond:",
-        ["Avaleht", "1. Tutvustus", "2. Pakkumine", "3. Leping", "4. Audit & Setup", "5. Strateegia"]
+    st.download_button(
+        label="⬇️ Lae alla Onboarding_Teekaart.pdf",
+        data=pdf_bytes,
+        file_name="Turundusjutud_Teekaart.pdf",
+        mime="application/pdf"
     )
-    
-    st.markdown("---")
-    st.markdown("#### Võta ühendust")
-    st.markdown("📧 info@turundusjutud.ee")
-    st.markdown("📞 +372 5555 5555")
 
-# --- LEHE SISU KUVAMINE ---
-
-if selected_step == "Avaleht":
-    show_intro()
-elif selected_step == "1. Tutvustus":
-    show_step1()
-elif selected_step == "2. Pakkumine":
-    show_step2()
-elif selected_step == "3. Leping":
-    show_step3()
-elif selected_step == "4. Audit & Setup":
-    show_step4()
-elif selected_step == "5. Strateegia":
-    show_step5()
-
-# --- JALUS ---
+# Eelvaate pilt (valikuline, et näidata, milline see välja näeb)
 st.markdown("---")
-st.markdown(
-    "<div style='text-align: center; color: #888;'>© 2024 Turundusjutud. Sinu strateegiline kasvu partner.</div>", 
-    unsafe_allow_html=True
-)
+st.caption("See tööriist loob A4 formaadis PDF faili, mis on optimeeritud meiliga saatmiseks.")
