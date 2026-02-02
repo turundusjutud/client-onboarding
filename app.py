@@ -52,33 +52,13 @@ def create_onboarding_pdf(logo_file):
 
     # --- 3. PROTSESSI SAMMUD ---
 
-    # Edu mudeli andmed
+    # Edu mudeli andmed (Visuaalsete kaartide jaoks) - Uuendatud sümbolitega
     pillars_data = [
-        {
-            "title": "TRACKING", 
-            "sub": "Analüütika", 
-            "desc": "Seadistame GA4 ja konversioonid, et mõõta reaalset äritulemust."
-        },
-        {
-            "title": "EESMÄRGID", 
-            "sub": "Unit Economics", 
-            "desc": "Paneme paika kasumlikkuse mudeli ja ROI eesmärgid."
-        },
-        {
-            "title": "SIHTIMINE", 
-            "sub": "Audience Mix", 
-            "desc": "Leiame sinu ideaalse kliendi läbi täpse audientsiloome."
-        },
-        {
-            "title": "LOOVUS", 
-            "sub": "Creative Assets", 
-            "desc": "Eristuvad visuaalid ja sõnumid, mis tõstavad klikkimise määra."
-        },
-        {
-            "title": "TEEKOND", 
-            "sub": "CRO / UX", 
-            "desc": "Optimeerime maandumislehe, et külastajast saaks klient."
-        },
+        {"title": "TRACKING", "sub": "Analüütika", "symbol": "📊"}, # Tulpdiagramm
+        {"title": "EESMÄRGID", "sub": "Unit Economics", "symbol": "💼"}, # Portfell
+        {"title": "SIHTIMINE", "sub": "Audience Mix", "symbol": "🎯"}, # Märklaud
+        {"title": "LOOVUS", "sub": "Creative Assets", "symbol": "💡"}, # Lambipirn
+        {"title": "TEEKOND", "sub": "CRO / UX", "symbol": "🔄"}, # Nooled ringis (optimeerimine)
     ]
 
     steps = [
@@ -98,7 +78,7 @@ def create_onboarding_pdf(logo_file):
             "num": "3", "title": "STRATEEGILINE PLAAN",
             "subtitle": "Tegevuskava kinnitamine",
             "text": "Loome tegevuskava koos selgete eesmärkide ja lahendustega. Lähtume plaanis järgmisest 5-osalisest edu mudelist:",
-            "has_visual_pillars": True,
+            "has_visual_pillars": True, # Märge, et siia tuleb joonistada sambad
             "is_last": False
         },
         {
@@ -122,7 +102,7 @@ def create_onboarding_pdf(logo_file):
         
         pillars_section_height = 0
         if step.get('has_visual_pillars'):
-            pillars_section_height = 120 # Ruumi sammaste jaoks
+            pillars_section_height = 100 # Ruumi sammaste jaoks
             
         box_height = 60 + text_height + pillars_section_height
         
@@ -148,10 +128,7 @@ def create_onboarding_pdf(logo_file):
     start_line_y = layout_data[0]['circle_y']
     last_box_bottom = layout_data[-1]['box_top'] - layout_data[-1]['box_height']
     
-    # Lõpmatuse sümboli asukoht (palju lähemal kastile)
     infinity_y = last_box_bottom - 15
-    
-    # Joon lõpeb enne sümbolit (jätame väikese vahe, nt 10px sümboli kohale)
     end_line_y = infinity_y + 12 
     
     c.setStrokeColor(COLOR_TEAL)
@@ -161,7 +138,7 @@ def create_onboarding_pdf(logo_file):
     # Lõpmatuse sümbol
     c.setFont("Helvetica", 24)
     c.setFillColor(COLOR_TEAL)
-    c.drawCentredString(line_x, infinity_y - 8, "∞") # -8 tsentreerimiseks kõrguses
+    c.drawCentredString(line_x, infinity_y - 8, "∞")
 
 
     # 2. Joonista kastid ja sisu
@@ -221,7 +198,7 @@ def create_onboarding_pdf(logo_file):
             available_width = box_width - 60 
             p_gap = 8
             p_width = (available_width - (4 * p_gap)) / 5
-            p_height = 95
+            p_height = 75 # Optimeeritud kõrgus
             
             p_start_x = line_x + 55 
             
@@ -229,7 +206,7 @@ def create_onboarding_pdf(logo_file):
                 px = p_start_x + (i * (p_width + p_gap))
                 py = pillars_y - p_height
                 
-                pillar_color = COLOR_TEAL
+                pillar_color = COLOR_TEAL # Kõik ühte värvi
                 pillar_radius = 8
                 
                 # --- 1. Joonista kasti taust ja piirjoon ---
@@ -241,18 +218,18 @@ def create_onboarding_pdf(logo_file):
                 # --- 2. Joonista värviline päis (Clippinguga) ---
                 c.saveState()
                 
-                # Loome "clipping path" ehk maski, mis on sama kujuga nagu sammas
+                # Loome maski, mis on sama kujuga nagu sammas
                 path = c.beginPath()
                 path.roundRect(px, py, p_width, p_height, pillar_radius)
                 c.clipPath(path, stroke=0, fill=0)
                 
-                # Joonistame kandilise kasti päisesse (mask lõikab nurgad ümaraks)
+                # Joonistame päise kasti
                 c.setFillColor(pillar_color)
                 c.rect(px, py + p_height - 22, p_width, 22, fill=1, stroke=0)
                 
                 c.restoreState()
                 
-                # --- 3. Taasta piirjoon päise ümber (valikuline, puhtuse mõttes) ---
+                # --- 3. Taasta piirjoon päise ümber (puhtuse mõttes) ---
                 c.setStrokeColor(pillar_color)
                 c.setLineWidth(1)
                 c.roundRect(px, py, p_width, p_height, pillar_radius, fill=0, stroke=1)
@@ -276,17 +253,14 @@ def create_onboarding_pdf(logo_file):
                 c.setFont("Helvetica", 6)
                 c.drawCentredString(px + p_width/2, py + p_height - 45, p['sub'])
                 
-                # Kirjeldus
-                c.setFillColor(COLOR_TEXT)
-                c.setFont("Helvetica", 6)
-                
-                p_wrapper = textwrap.TextWrapper(width=15) 
-                desc_lines = p_wrapper.wrap(p['desc'])
-                
-                desc_y = py + p_height - 58
-                for d_line in desc_lines[:4]: 
-                    c.drawCentredString(px + p_width/2, desc_y, d_line)
-                    desc_y -= 8
+                # --- SÜMBOL/EMOJI ---
+                # Asendame kirjelduse ja ringi sümboliga
+                c.setFillColor(pillar_color)
+                symbol = p.get('symbol', '')
+                # Kasutame suuremat fonti sümboli jaoks
+                c.setFont("Helvetica", 16) 
+                # Paigutame sümboli kasti alumisse ossa
+                c.drawCentredString(px + p_width/2, py + 12, symbol)
 
     # --- 4. JALUS JA NUPP ---
     footer_height = 100
@@ -321,7 +295,7 @@ def create_onboarding_pdf(logo_file):
 
 # --- STREAMLIT UI ---
 st.title("📄 Turundusjutud Onboarding PDF")
-st.write("Genereeri ametlik protsessijoonis (Sammud + Edu mudel).")
+st.write("Genereeri ametlik protsessijoonis (Viimistletud Edu mudeliga).")
 
 logo = st.file_uploader("Vali logo (PNG)", type=['png'])
 
